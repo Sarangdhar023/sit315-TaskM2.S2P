@@ -1,50 +1,42 @@
-#include <chrono> // Include the header file for chrono library, used for measuring time
-#include <cstdlib> // Include the header file for the C standard library
-#include <iostream> // Include the header file for input and output operations
-#include <thread> // Include the header file for std::thread
-#include <vector> // Include the header file for std::vector
+#include <chrono>
+#include <cstdlib>
+#include <iostream>
+#include <omp.h>  // Include OpenMP header
 
-using namespace std::chrono; // Use the chrono namespace for time-related operations
-using namespace std; // Use the standard namespace for standard library functions
+using namespace std::chrono;
+using namespace std;
 
-// Function to generate random values and fill the vector
 void randomVector(int vector[], int size) {
-    for (int i = 0; i < size; i++) {
-        vector[i] = rand() % 100; // Generate random numbers between 0 and 99
-    }
+  #pragma omp parallel for
+  for (int i = 0; i < size; i++) {
+    vector[i] = rand() % 100;
+  }
 }
 
 int main() {
-    unsigned long size = 100000000; // Define the size of the vectors
-    srand(time(0)); // Seed the random number generator with the current time
+  unsigned long size = 100000000;
+  srand(time(0));
+  int *v1, *v2, *v3;
+  auto start = high_resolution_clock::now();
+  v1 = (int *)malloc(size * sizeof(int));
+  v2 = (int *)malloc(size * sizeof(int));
+  v3 = (int *)malloc(size * sizeof(int));
+  randomVector(v1, size);
+  randomVector(v2, size);
 
-    // Declare pointers for three integer arrays
-    int *v1, *v2, *v3;
+  #pragma omp parallel for
+  for (int i = 0; i < size; i++) {
+    v3[i] = v1[i] + v2[i];
+  }
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<microseconds>(stop - start);
+  cout << "Time taken by function :" << duration.count() << " microseconds"
+       << endl;
+  
+  // Free allocated memory
+  free(v1);
+  free(v2);
+  free(v3);
 
-    auto start = high_resolution_clock::now(); // Get the current time before the operation
-
-    // Allocate memory for the three vectors dynamically
-    v1 = (int *)malloc(size * sizeof(int));
-    v2 = (int *)malloc(size * sizeof(int));
-    v3 = (int *)malloc(size * sizeof(int));
-
-    // Fill v1 and v2 with random values using threads
-    thread t1(randomVector, v1, size); // Thread for v1
-    thread t2(randomVector, v2, size); // Thread for v2
-
-    t1.join(); // Wait for thread t1 to finish
-    t2.join(); // Wait for thread t2 to finish
-
-    // Perform vector addition element-wise
-    for (int i = 0; i < size; i++) {
-        v3[i] = v1[i] + v2[i];
-    }
-
-    auto stop = high_resolution_clock::now(); // Get the current time after the operation
-    auto duration = duration_cast<microseconds>(stop - start); // Calculate the duration of the operation
-
-    // Output the time taken by the operation in microseconds
-    cout << "Time taken by function: " << duration.count() << " microseconds" << endl;
-
-    return 0; // Return 0 to indicate successful execution
+  return 0;
 }
